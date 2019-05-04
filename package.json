@@ -1,0 +1,14 @@
+{
+    "name": "slack-midi",
+    "version": "0.0.1",
+    "description": "A slack bot that translates words to midi messages and sends them to a Solace router.",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "botkit": "0.7.0",
+        "solclientjs": "^10.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/damaru-inc/slack-midi"
+    }
+}
