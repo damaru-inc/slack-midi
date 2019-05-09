@@ -70,6 +70,21 @@ function testSolace() {
 function testMap() {
     var map = {}
 
+    for ( a of midi.charMap) {
+        //console.log(a)
+        let b = a[1]
+        //console.log(b)
+        let c = map[b]
+        if (undefined === c) {
+            //console.log('new ' + b)
+            map[b] = 1
+        } else {
+            c++
+            console.log(b + ': already seen it ' + c + ' times')
+            map[b] = c
+        }
+    }
+
     map['a'] = 'b'
     var val = map['a']
     console.log(val)
@@ -156,6 +171,6 @@ async function testNum() {
     console.log("test is done.")
 }
 //testMidi()
-//testMap()
-testSolace()
+testMap()
+//testSolace()
 //testNum()

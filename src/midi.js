@@ -27,7 +27,7 @@ module.exports = function () {
     ['x', 81], // A5
     ['q', 40], // E2
     ['j', 38], // D2
-    ['z', 41], // F2
+    ['z', 81], // B6
   ]);
 
   this.NOTE_ON = 144  // 0x90
