@@ -1,51 +1,76 @@
-var charMap = new Map([
-    ['a', 60], // C4
-    ['t', 48], // C3
-    ['a', 72], // C5
-    ['o', 67], // G4
-    ['i', 55], // G3
-    ['n', 64], // E4
-    ['s', 52], // E3
-    ['r', 65], // F4
-    ['h', 53], // F3
-    ['d', 69], // A4
-    ['l', 57], // A3
-    ['u', 62], // D4
-    ['c', 50], // D3
-    ['m', 71], // B4
-    ['f', 59], // B3
-    ['y', 74], // D5
-    ['w', 47], // B2
-    ['g', 76], // E5
-    ['p', 45], // A2
-    ['b', 77], // F5
-    ['v', 43], // G2
-    ['k', 79], // G5
-    ['x', 41], // F2
-    ['q', 81], // A5
-    ['j', 40], // E2
-    ['z', 38], // D2
-]);
+const botkit = require('botkit')
+const fs = require('fs')
+const Pub = require("./pub.js")
+const Midi = require("./midi.js")
 
-
-var s = "The time has come";
-
-for (c of s) {
-    var i = isUpper(c);
-    var l = c.toLowerCase();
-    var n = noteForChar(l)
-    if (!n) {
-        n = 'rest'
-    }
-    console.log('note ' + c + ' ' + i + ' ' + n);
+if (!process.env.slack_midi_config_path) {
+    console.log('Error: Specify slack_token_path in environment')
+    process.exit(1)
 }
 
-function noteForChar(char) {
+var configData = fs.readFileSync(process.env.slack_midi_config_path)
+var config = JSON.parse(configData)
+var solace = require('solclientjs')
+var controller = botkit.slackbot({ debug: false })
+var midi = new Midi();
 
-    return charMap.get(char);
-};
+var factoryProps = new solace.SolclientFactoryProperties();
+factoryProps.profile = solace.SolclientFactoryProfiles.version10;
+solace.SolclientFactory.init(factoryProps);
+solace.SolclientFactory.setLogLevel(solace.LogLevel.WARN);
+var pub = new Pub(solace, config);
+pub.connect()
 
-function isUpper(character) {
-  return (character === character.toUpperCase()) && (character !== character.toLowerCase());
+controller
+    .spawn({ token: config.slackKey })
+    .startRTM(function (err) {
+        if (err) {
+            throw new Error(err)
+        }
+    })
+
+var shortDur = 200
+var longDur = shortDur * 2
+
+controller.hears(
+    '.*', 'direct_message',
+    async (bot, message) => {
+        var channel = 0
+        var topic = 'midi/0/' + channel
+        //console.log('topic: ' + topic)
+
+        try {
+            for (char of message.text) {
+                //console.log('char: ' + char)
+                if (char >= '0' && char <= '9') {
+                    topic = 'midi/0/' + char
+                    //console.log('changed topic to ' + topic)
+                    channel = parseInt(char)
+                } else {
+                    var note = midi.noteForChar(char)
+
+                    if (!note) {
+                        await sleep(shortDur)
+                    } else {
+                        var duration = midi.isUpper(char) ? longDur : shortDur
+                        var midiString = midi.shortMessage(channel, midi.NOTE_ON, note, 100)
+                        pub.publish(midiString, topic)
+                        await sleep(duration)
+                        midiString = midi.shortMessage(channel, midi.NOTE_OFF, note, 100)
+                        pub.publish(midiString, topic)
+                    }
+                }
+            }
+        } catch (e) {
+            console.log(e)
+        }
+    })
+
+function sleep(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
 }
+
+
 

@@ -1,6 +1,6 @@
-FROM node:7.4
+FROM node:8.10.0-alpine
 COPY package.json /src/package.json
 WORKDIR /src
 RUN npm install
-COPY src/kittenbot.js /src
-CMD ["node", "/src/kittenbot.js"]
+COPY src/app.js src/pub.js src/midi.js /src/
+CMD ["node", "/src/app.js"]

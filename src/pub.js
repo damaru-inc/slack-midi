@@ -25,12 +25,11 @@
 
 /*jslint es6 node:true devel:true*/
 
-var TopicPublisher = function (solaceModule, topicName) {
+module.exports = function (solaceModule, config) {
     'use strict';
     var solace = solaceModule;
     var publisher = {};
     publisher.session = null;
-    publisher.topicName = topicName;
 
     // Logger
     publisher.log = function (line) {
@@ -41,34 +40,27 @@ var TopicPublisher = function (solaceModule, topicName) {
         console.log(timestamp + line);
     };
 
-    publisher.log('\n*** Publisher to topic "' + publisher.topicName + '" is ready to connect ***');
+    publisher.log('\n*** Publisher is ready to connect ***');
 
     // main function
-    publisher.run = function (argv) {
-        publisher.connect(argv);
+    publisher.run = function () {
+        publisher.connect();
     };
 
     // Establishes connection to Solace message router
-    publisher.connect = function (argv) {
+    publisher.connect = function () {
         if (publisher.session !== null) {
             publisher.log('Already connected and ready to publish.');
             return;
         }
         // extract params
-        if (argv.length < (2 + 3)) { // expecting 3 real arguments
-            publisher.log('Cannot connect: expecting all arguments' +
-                ' <protocol://host[:port]> <client-username>@<message-vpn> <client-password>.\n' +
-                'Available protocols are ws://, wss://, http://, https://, tcp://, tcps://');
-            process.exit();
-        }
-        var hosturl = argv.slice(2)[0];
+        var hosturl = config.host
         publisher.log('Connecting to Solace message router using url: ' + hosturl);
-        var usernamevpn = argv.slice(3)[0];
-        var username = usernamevpn.split('@')[0];
+        var username = config.username
         publisher.log('Client username: ' + username);
-        var vpn = usernamevpn.split('@')[1];
+        var vpn = config.vpn
         publisher.log('Solace message router VPN name: ' + vpn);
-        var pass = argv.slice(4)[0];
+        var pass = config.password
         // create session
         try {
             publisher.session = solace.SolclientFactory.createSession({
@@ -82,14 +74,14 @@ var TopicPublisher = function (solaceModule, topicName) {
             publisher.log(error.toString());
         }
         // define session event listeners
-        publisher.session.on(solace.SessionEventCode.UP_NOTICE, function (sessionEvent) {
-            publisher.log('=== Successfully connected and ready to publish messages. ===');
-            publisher.publish();
-            publisher.exit();
-        });
+        // publisher.session.on(solace.SessionEventCode.UP_NOTICE, function (sessionEvent) {
+        //     publisher.log('=== Successfully connected and ready to publish messages. ===');
+        // });
+
         publisher.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, function (sessionEvent) {
             publisher.log('Connection failed to the message router: ' + sessionEvent.infoStr +
                 ' - check correct parameter values and connectivity!');
+                process.exit(1)
         });
         publisher.session.on(solace.SessionEventCode.DISCONNECTED, function (sessionEvent) {
             publisher.log('Disconnected.');
@@ -106,18 +98,34 @@ var TopicPublisher = function (solaceModule, topicName) {
         }
     };
 
+    publisher.message = solace.SolclientFactory.createMessage();
+    publisher.message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
+    publisher.topicMap = {}
+
+    publisher.getTopic = function(topic) {
+        var ret = publisher.topicMap[topic]
+
+        if (undefined === ret) {
+            //console.log("topic was undefined.")
+            ret = solace.SolclientFactory.createTopicDestination(topic)
+            publisher.topicMap[topic] = ret
+        } else {
+            //console.log("Found topic " + topic + " " + ret)
+        }
+
+        return ret
+    }
+
     // Publishes one message
-    publisher.publish = function () {
+    publisher.publish = function (messageText, topic) {
         if (publisher.session !== null) {
-            var messageText = 'Sample Message';
-            var message = solace.SolclientFactory.createMessage();
-            message.setDestination(solace.SolclientFactory.createTopicDestination(publisher.topicName));
-            message.setBinaryAttachment(messageText);
-            message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
-            publisher.log('Publishing message "' + messageText + '" to topic "' + publisher.topicName + '"...');
+            var solaceTopic = publisher.getTopic(topic)
+            this.message.setDestination(solaceTopic);
+            this.message.setBinaryAttachment(messageText);
+            //publisher.log('Publishing message "' + messageText + '" to topic "' + topic + '"...');
             try {
-                publisher.session.send(message);
-                publisher.log('Message published.');
+                publisher.session.send(this.message);
+                //publisher.log('Message published.');
             } catch (error) {
                 publisher.log(error.toString());
             }
@@ -150,19 +158,3 @@ var TopicPublisher = function (solaceModule, topicName) {
     return publisher;
 };
 
-var solace = require('solclientjs').debug; // logging supported
-
-// Initialize factory with the most recent API defaults
-var factoryProps = new solace.SolclientFactoryProperties();
-factoryProps.profile = solace.SolclientFactoryProfiles.version10;
-solace.SolclientFactory.init(factoryProps);
-
-// enable logging to JavaScript console at WARN level
-// NOTICE: works only with ('solclientjs').debug
-solace.SolclientFactory.setLogLevel(solace.LogLevel.WARN);
-
-// create the publisher, specifying the name of the subscription topic
-var publisher = new TopicPublisher(solace, 'tutorial/topic');
-
-// publish message to Solace message router
-publisher.run(process.argv);

@@ -17,9 +17,9 @@ limitations under the License.
 This is a sample Slack bot built with Botkit.
 */
 
-var Botkit = require('botkit')
-var fs = require('fs')
-var controller = Botkit.slackbot({debug: false})
+const botkit = require('botkit')
+const fs = require('fs')
+var controller = botkit.slackbot({debug: false})
 
 if (!process.env.slack_token_path) {
   console.log('Error: Specify slack_token_path in environment')
