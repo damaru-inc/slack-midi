@@ -1,2 +1,1 @@
-#kubectl create -f deployment.yml --record
-kubectl replace -f deployment.yml 
+kubectl create -f deployment.yml --record

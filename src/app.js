@@ -3,13 +3,16 @@ const fs = require('fs')
 const Pub = require("./pub.js")
 const Midi = require("./midi.js")
 
-if (!process.env.slack_midi_config_path) {
-    console.log('Error: Specify slack_token_path in environment')
-    process.exit(1)
+var configPath = "./config.json"
+
+if (process.env.slack_midi_config_path) {
+    configPath = process.env.slack_midi_config_path
 }
 
-var configData = fs.readFileSync(process.env.slack_midi_config_path)
-var config = JSON.parse(configData)
+var config = require(configPath)
+
+// var configData = fs.readFileSync(process.env.slack_midi_config_path)
+// var config = JSON.parse(configData)
 var solace = require('solclientjs')
 var controller = botkit.slackbot({ debug: false })
 var midi = new Midi();

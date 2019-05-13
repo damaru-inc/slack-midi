@@ -1,1 +1,1 @@
-docker build -t gcr.io/slack-midi-1/slack-midi-1:v2 .
+docker build -t gcr.io/slack-midi-1/slack-midi-1:v3 .
