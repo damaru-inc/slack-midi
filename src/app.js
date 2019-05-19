@@ -11,10 +11,8 @@ if (process.env.slack_midi_config_path) {
 
 var config = require(configPath)
 
-// var configData = fs.readFileSync(process.env.slack_midi_config_path)
-// var config = JSON.parse(configData)
 var solace = require('solclientjs')
-var controller = botkit.slackbot({ debug: false })
+var controller = botkit.slackbot({ debug: true })
 var midi = new Midi();
 
 var factoryProps = new solace.SolclientFactoryProperties();
